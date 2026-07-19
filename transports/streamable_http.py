@@ -3,11 +3,14 @@ import logging
 
 from django.http import JsonResponse
 
+from ..authentication import ClientCredentialsAuthentication
 from ..protocol.jsonrpc import JSONRPCHandler
 from ..protocol.responses import MCPResponse
 from ..context import set_context, get_context, clear_context
 
 logger = logging.getLogger("django_mcp")
+
+_client_auth = ClientCredentialsAuthentication()
 
 
 class StreamableHTTPTransport:
@@ -117,9 +120,15 @@ class StreamableHTTPTransport:
             ],
         }
 
+    def _authenticate(self, request):
+        user = _client_auth.authenticate(request)
+        if user is not None:
+            request.user = user
+
     def handle_get(self, request):
         from ..registry import registry
 
+        self._authenticate(request)
         tools = registry.list()
         tools_list = [tool.to_tool_dict() for tool in tools.values()]
 
@@ -165,6 +174,7 @@ class StreamableHTTPTransport:
                 status=400,
             )
 
+        self._authenticate(request)
         set_context(django_request=request)
         try:
             if isinstance(request_data, list):

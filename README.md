@@ -251,6 +251,7 @@ This exposes:
 | `/mcp/` | POST | Execute JSON-RPC requests |
 | `/mcp/sse/` | GET | SSE transport (for older clients) |
 | `/mcp/sse/` | POST | SSE transport RPC |
+| `/mcp/credentials/` | GET | Client credential management UI |
 
 ### MCPRouter
 
@@ -369,6 +370,59 @@ MCP_ENABLE_SSE = True
 
 # Custom tool discovery apps (default: all INSTALLED_APPS)
 MCP_DISCOVERY_APPS = []
+```
+
+## Client Credentials Authentication
+
+MCP clients (Claude Desktop, Cursor, VS Code extensions, etc.) typically authenticate via the `Authorization` header rather than browser sessions. Django MCP supports client credentials for this purpose.
+
+### How It Works
+
+1. A user creates a credential pair (client ID + client secret) via the management UI
+2. The MCP client sends `Authorization: Bearer <client_id>:<client_secret>` on each request
+3. The transport layer validates the credential, sets `request.user`, and updates `last_used_at`
+4. Session-based auth still works as a fallback for browser access
+
+### Management UI
+
+The credential management page is available at `/mcp/credentials/` (mounted via `django_mcp.urls`). It provides:
+
+- Create new credentials with a descriptive name
+- View all credentials (client ID, created date, last used)
+- Toggle credentials active/inactive
+- Delete credentials
+- One-time display of the client secret with copy buttons
+- Example MCP client configuration
+
+The management UI is fully self-contained within `django_mcp` and requires no host application templates.
+
+### Embedding in Your App
+
+To include the credentials section in your own settings page, use the `_credentials_section.html` template fragment:
+
+```html
+{% include "mcp/_credentials_section.html" %}
+```
+
+Pass `credentials`, `new_credential` (optional), and `error` (optional) in the template context.
+
+### Programmatic Access
+
+```python
+from django_mcp.models import ClientCredential
+
+# Generate a new credential
+secret = ClientCredential.generate_secret()
+credential = ClientCredential(user=user, name="My App")
+credential.set_secret(secret)
+credential.save()
+
+# The raw secret is only available at creation time
+print(f"Client ID: {credential.client_id}")
+print(f"Client Secret: {secret}")
+
+# Verify a secret
+credential.verify_secret(raw_secret)  # True/False
 ```
 
 ## Example: Member Lookup tool

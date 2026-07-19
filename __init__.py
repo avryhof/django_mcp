@@ -28,6 +28,7 @@ from .authentication import (
     MCPAuthentication,
     SessionAuthentication,
     RemoteUserAuthentication,
+    ClientCredentialsAuthentication,
 )
 from .discovery import discover_mcp_tools
 
@@ -57,5 +58,6 @@ __all__ = [
     "MCPAuthentication",
     "SessionAuthentication",
     "RemoteUserAuthentication",
+    "ClientCredentialsAuthentication",
     "discover_mcp_tools",
 ]

@@ -5,10 +5,13 @@ import threading
 
 from django.http import StreamingHttpResponse, JsonResponse
 
+from ..authentication import ClientCredentialsAuthentication
 from ..protocol.jsonrpc import JSONRPCHandler
 from ..context import set_context, get_context, clear_context
 
 logger = logging.getLogger("django_mcp")
+
+_client_auth = ClientCredentialsAuthentication()
 
 
 class SSETransport:
@@ -113,6 +116,11 @@ class SSETransport:
             ],
         }
 
+    def _authenticate(self, request):
+        user = _client_auth.authenticate(request)
+        if user is not None:
+            request.user = user
+
     def handle_sse(self, request):
         def process_events():
             try:
@@ -143,6 +151,7 @@ class SSETransport:
         except json.JSONDecodeError:
             return self._error_response(-32700, "Parse error: Invalid JSON")
 
+        self._authenticate(request)
         set_context(django_request=request)
         try:
             response = self.handler.handle(json.dumps(request_data).encode())

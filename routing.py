@@ -1,21 +1,6 @@
 from django.urls import path, include
 
-from .views import MCPStreamableHTTPView, MCPSSEView
-
 app_name = "django_mcp"
-
-urlpatterns = [
-    path(
-        "",
-        MCPStreamableHTTPView.as_view(),
-        name="mcp-endpoint",
-    ),
-    path(
-        "sse/",
-        MCPSSEView.as_view(),
-        name="mcp-sse",
-    ),
-]
 
 
 class MCPRouter:
