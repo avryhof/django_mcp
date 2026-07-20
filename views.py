@@ -6,7 +6,7 @@ from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.utils.decorators import method_decorator
 from django.views import View
-from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.csrf import csrf_protect, csrf_exempt
 
 from .transports.streamable_http import StreamableHTTPTransport
 from .transports.sse import SSETransport
@@ -21,6 +21,10 @@ class MCPStreamableHTTPView(View):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.transport = StreamableHTTPTransport()
+
+    @method_decorator(csrf_exempt)
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
 
     def get(self, request, *args, **kwargs):
         return self.transport.handle_get(request)
@@ -37,6 +41,10 @@ class MCPSSEView(View):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.transport = SSETransport()
+
+    @method_decorator(csrf_exempt)
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
 
     def get(self, request, *args, **kwargs):
         return self.transport.handle_sse(request)

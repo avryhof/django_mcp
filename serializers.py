@@ -22,6 +22,9 @@ class MCPField:
             return self.default
         return self.validate(value)
 
+    def to_representation(self, value):
+        return value
+
 
 class CharField(MCPField):
 
@@ -122,10 +125,89 @@ class DictField(MCPField):
         return value
 
 
+class ReadOnlyField(MCPField):
+
+    def __init__(self, source=None, **kwargs):
+        self.source = source
+        kwargs.setdefault("required", False)
+        super().__init__(**kwargs)
+
+    def to_schema(self):
+        return {"type": "string"}
+
+    def validate(self, value):
+        return value
+
+
+class SerializerMethodField(MCPField):
+
+    def __init__(self, method_name=None, **kwargs):
+        self.method_name = method_name
+        kwargs.setdefault("required", False)
+        super().__init__(**kwargs)
+
+    def to_schema(self):
+        return {"type": "string"}
+
+    def validate(self, value):
+        return value
+
+
+class StringRelatedField(MCPField):
+
+    def __init__(self, source=None, many=False, **kwargs):
+        self.source = source
+        self.many = many
+        kwargs.setdefault("required", False)
+        super().__init__(**kwargs)
+
+    def to_schema(self):
+        return {"type": "string"}
+
+    def validate(self, value):
+        if value is None:
+            return value
+        if self.many:
+            return [str(item) for item in value]
+        return str(value)
+
+    def to_representation(self, value):
+        if value is None:
+            return None
+        if self.many:
+            return [str(item) for item in value.all()]
+        return str(value)
+
+
+class NestedSerializerField(MCPField):
+
+    def __init__(self, serializer_class, source=None, many=False, **kwargs):
+        self.serializer_class = serializer_class
+        self.source = source
+        self.many = many
+        kwargs.setdefault("required", False)
+        super().__init__(**kwargs)
+
+    def to_schema(self):
+        return {"type": "object"}
+
+    def validate(self, value):
+        return value
+
+    def to_representation(self, value):
+        if value is None:
+            return None
+        if self.many:
+            return self.serializer_class(instance=value.all(), many=True).data
+        return self.serializer_class(instance=value).data
+
+
 class Serializer:
 
-    def __init__(self, data=None):
+    def __init__(self, instance=None, data=None, many=False):
+        self.instance = instance
         self.initial_data = data
+        self.many = many
         self.validated_data = {}
         self._errors = {}
         self.fields = self._get_fields()
@@ -193,3 +275,40 @@ class Serializer:
     @property
     def errors(self):
         return self._errors
+
+    @property
+    def data(self):
+        if self.instance is None:
+            return {}
+        if self.many:
+            return [self.to_representation(item) for item in self.instance]
+        return self.to_representation(self.instance)
+
+    def to_representation(self, instance):
+        ret = {}
+        for name, field in self.fields.items():
+            value = self._get_value(instance, name)
+            ret[name] = field.to_representation(value)
+        return ret
+
+    def _get_value(self, instance, name):
+        field = self.fields[name]
+        if isinstance(field, SerializerMethodField):
+            method_name = field.method_name or f"get_{name}"
+            method = getattr(self, method_name, None)
+            if method:
+                return method(instance)
+            return None
+        source = getattr(field, "source", None) or name
+        return self._get_attribute(instance, source)
+
+    @staticmethod
+    def _get_attribute(instance, source):
+        if "." in source:
+            obj = instance
+            for part in source.split("."):
+                obj = getattr(obj, part, None)
+                if obj is None:
+                    return None
+            return obj
+        return getattr(instance, source, None)
