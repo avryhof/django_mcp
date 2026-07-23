@@ -13,6 +13,18 @@ logger = logging.getLogger("django_mcp")
 _client_auth = ClientCredentialsAuthentication()
 
 
+def _get_enabled_tool_names():
+    """Return the set of enabled tool names from MCPToolConfig.
+    Falls back to all tools if the model doesn't exist yet (e.g. during migration)."""
+    try:
+        from ..models import MCPToolConfig
+        return set(MCPToolConfig.objects.filter(enabled=True).values_list("name", flat=True))
+    except Exception:
+        # Model may not exist yet during migrations or if DB is not ready
+        from ..registry import registry
+        return set(registry.list().keys())
+
+
 class StreamableHTTPTransport:
 
     def __init__(self):
@@ -26,13 +38,16 @@ class StreamableHTTPTransport:
         self.handler.register("ping", self._handle_ping)
 
     def _handle_initialize(self, request):
+        from django.conf import settings
+
+        server_name = getattr(settings, "MCP_SERVER_NAME", "django-mcp")
         return {
             "protocolVersion": "2025-03-26",
             "capabilities": {
                 "tools": {},
             },
             "serverInfo": {
-                "name": "django-mcp",
+                "name": server_name,
                 "version": "0.1.0",
             },
         }
@@ -43,9 +58,10 @@ class StreamableHTTPTransport:
     def _handle_tools_list(self, request):
         from ..registry import registry
 
+        enabled_names = _get_enabled_tool_names()
         tools = registry.list()
         return {
-            "tools": [tool.to_tool_dict() for tool in tools.values()],
+            "tools": [tool.to_tool_dict() for name, tool in tools.items() if name in enabled_names],
         }
 
     def _handle_tools_call(self, request):
@@ -55,6 +71,17 @@ class StreamableHTTPTransport:
         params = request.params
         tool_name = params.get("name")
         arguments = params.get("arguments", {})
+
+        # Check if tool is enabled
+        enabled_names = _get_enabled_tool_names()
+        if tool_name not in enabled_names:
+            return MCPResponse.error_response(
+                {
+                    "code": -32601,
+                    "message": f"Tool '{tool_name}' is not enabled.",
+                },
+                id=request.id,
+            ).to_dict()
 
         try:
             tool = registry.get(tool_name)
@@ -129,8 +156,9 @@ class StreamableHTTPTransport:
         from ..registry import registry
 
         self._authenticate(request)
+        enabled_names = _get_enabled_tool_names()
         tools = registry.list()
-        tools_list = [tool.to_tool_dict() for tool in tools.values()]
+        tools_list = [tool.to_tool_dict() for name, tool in tools.items() if name in enabled_names]
 
         return JsonResponse(
             {

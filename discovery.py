@@ -1,8 +1,6 @@
 import importlib
 import logging
 
-from django.apps import apps
-
 logger = logging.getLogger("django_mcp")
 
 

@@ -54,8 +54,11 @@ class MCPSSEView(View):
 class MCPToolListView(View):
 
     def get(self, request, *args, **kwargs):
+        from .transports.streamable_http import _get_enabled_tool_names
+
+        enabled_names = _get_enabled_tool_names()
         tools = registry.list()
-        tools_list = [tool.to_tool_dict() for tool in tools.values()]
+        tools_list = [tool.to_tool_dict() for name, tool in tools.items() if name in enabled_names]
         return JsonResponse(
             {"tools": tools_list},
             json_dumps_params={"indent": 2},

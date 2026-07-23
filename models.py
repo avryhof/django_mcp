@@ -7,6 +7,23 @@ from django.contrib.auth.models import User
 from django.db import models
 
 
+class MCPToolConfig(models.Model):
+    """Tracks registered MCP tools and allows enabling/disabling them via admin."""
+    name = models.CharField(max_length=255, unique=True)
+    description = models.TextField(blank=True, default="")
+    tags = models.CharField(max_length=500, blank=True, default="")
+    enabled = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name = "MCP Tool"
+        verbose_name_plural = "MCP Tools"
+
+    def __str__(self):
+        status = "enabled" if self.enabled else "disabled"
+        return f"{self.name} ({status})"
+
+
 class ClientCredential(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="mcp_credentials")
     name = models.CharField(max_length=255, help_text="Descriptive name, e.g. 'Claude Desktop'")
