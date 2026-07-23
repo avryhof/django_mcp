@@ -2,12 +2,13 @@ import hashlib
 import secrets
 import uuid
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.db import models
 
 
 class ClientCredential(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="mcp_credentials")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="mcp_credentials")
     name = models.CharField(max_length=255, help_text="Descriptive name, e.g. 'Claude Desktop'")
     client_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     client_secret_hash = models.CharField(max_length=128, editable=False)

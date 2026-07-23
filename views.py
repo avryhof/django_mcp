@@ -1,4 +1,3 @@
-import json
 import logging
 
 from django.contrib.auth.decorators import login_required
@@ -8,10 +7,9 @@ from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 
-from .transports.streamable_http import StreamableHTTPTransport
-from .transports.sse import SSETransport
 from .registry import registry
-from .protocol.errors import MCPError
+from .transports.sse import SSETransport
+from .transports.streamable_http import StreamableHTTPTransport
 
 logger = logging.getLogger("django_mcp")
 
@@ -72,10 +70,14 @@ class MCPClientCredentialsView(View):
 
     def get(self, request, *args, **kwargs):
         credentials = request.user.mcp_credentials.all()
-        return render(request, self.template_name, {
-            "credentials": credentials,
-            "mcp_endpoint": self._get_mcp_endpoint(request),
-        })
+        return render(
+            request,
+            self.template_name,
+            {
+                "credentials": credentials,
+                "mcp_endpoint": self._get_mcp_endpoint(request),
+            },
+        )
 
     def post(self, request, *args, **kwargs):
         from .models import ClientCredential
@@ -85,11 +87,15 @@ class MCPClientCredentialsView(View):
         if action == "create":
             name = request.POST.get("name", "").strip()
             if not name:
-                return render(request, self.template_name, {
-                    "credentials": request.user.mcp_credentials.all(),
-                    "error": "A name is required.",
-                    "mcp_endpoint": self._get_mcp_endpoint(request),
-                })
+                return render(
+                    request,
+                    self.template_name,
+                    {
+                        "credentials": request.user.mcp_credentials.all(),
+                        "error": "A name is required.",
+                        "mcp_endpoint": self._get_mcp_endpoint(request),
+                    },
+                )
 
             secret = ClientCredential.generate_secret()
             credential = ClientCredential(user=request.user, name=name)
@@ -97,15 +103,19 @@ class MCPClientCredentialsView(View):
             credential.save()
 
             credentials = request.user.mcp_credentials.all()
-            return render(request, self.template_name, {
-                "credentials": credentials,
-                "new_credential": {
-                    "client_id": str(credential.client_id),
-                    "client_secret": secret,
-                    "name": credential.name,
+            return render(
+                request,
+                self.template_name,
+                {
+                    "credentials": credentials,
+                    "new_credential": {
+                        "client_id": str(credential.client_id),
+                        "client_secret": secret,
+                        "name": credential.name,
+                    },
+                    "mcp_endpoint": self._get_mcp_endpoint(request),
                 },
-                "mcp_endpoint": self._get_mcp_endpoint(request),
-            })
+            )
 
         elif action == "toggle":
             cred_id = request.POST.get("credential_id")
