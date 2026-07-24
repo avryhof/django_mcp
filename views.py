@@ -1,6 +1,7 @@
 import logging
 
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.utils.decorators import method_decorator
@@ -51,7 +52,7 @@ class MCPSSEView(View):
         return self.transport.handle_post(request)
 
 
-class MCPToolListView(View):
+class MCPToolListView(LoginRequiredMixin, View):
 
     def get(self, request, *args, **kwargs):
         from .transports.streamable_http import _get_enabled_tool_names

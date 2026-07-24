@@ -30,11 +30,20 @@ class ClientCredential(models.Model):
     client_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     client_secret_hash = models.CharField(max_length=128, editable=False)
     is_active = models.BooleanField(default=True)
+    global_access = models.BooleanField(
+        default=False,
+        help_text="Allow this credential to access all users' objects. Only available for superuser credentials."
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     last_used_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["-created_at"]
+
+    def clean(self):
+        if self.global_access and not self.user.is_superuser:
+            from django.core.exceptions import ValidationError
+            raise ValidationError({"global_access": "Global access is only available for superuser accounts."})
 
     def __str__(self):
         return f"{self.name} ({self.client_id})"

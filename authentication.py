@@ -71,4 +71,5 @@ class ClientCredentialsAuthentication(MCPAuthentication):
         credential.last_used_at = timezone.now()
         credential.save(update_fields=["last_used_at"])
 
+        request.mcp_global_access = credential.global_access
         return credential.user
