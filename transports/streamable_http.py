@@ -102,12 +102,24 @@ class StreamableHTTPTransport:
             else:
                 perm = permission_class
             if not perm.has_permission(django_request, tool):
-                raise ToolPermissionDenied(tool_name)
+                return MCPResponse.error_response(
+                    {
+                        "code": -32601,
+                        "message": f"Permission denied for tool '{tool_name}'.",
+                    },
+                    id=request.id,
+                ).to_dict()
 
         if tool.input_serializer is not None:
             serializer = tool.input_serializer(data=arguments)
             if not serializer.is_valid():
-                raise ToolValidationError(serializer.errors)
+                return MCPResponse.error_response(
+                    {
+                        "code": -32602,
+                        "message": f"Invalid arguments for tool '{tool_name}': {serializer.errors}",
+                    },
+                    id=request.id,
+                ).to_dict()
             validated_data = serializer.validated_data
         else:
             validated_data = arguments
