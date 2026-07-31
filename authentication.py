@@ -37,7 +37,7 @@ class RemoteUserAuthentication(MCPAuthentication):
 class ClientCredentialsAuthentication(MCPAuthentication):
 
     def authenticate(self, request):
-        auth_header = request.META.get("HTTP_AUTHORIZATION", "")
+        auth_header = request.headers.get("authorization", "")
         if not auth_header.startswith("Bearer "):
             return None
 

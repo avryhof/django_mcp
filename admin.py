@@ -64,4 +64,3 @@ class ClientCredentialAdmin(admin.ModelAdmin):
     list_display = ["name", "user", "is_active", "global_access", "created_at",]
     list_filter = ["user", "is_active", "global_access",]
     search_fields = ["name", "user__username", "user__first_name", "user__last_name"]
-    
